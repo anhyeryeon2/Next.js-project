@@ -1,12 +1,14 @@
 #### #4, #5
 
-
-## server action
+# server action
 
 route 핸들러를 생성하고 post를 fetch하는 대신에
 
-*서버액션은 비동기함수여야한다.
-``` tsx
+#### *서버액션은 비동기함수여야한다.
+> 비동기 :  특정 코드가 끝날때 까지 코드의 실행을 멈추지 않고 다음 코드를 먼저 실행
+
+
+``` jsx
 export default function LogIn(){
     async function handleForm(formDatas: FormData){
         "use server";
@@ -15,9 +17,11 @@ export default function LogIn(){
 }
 ```
 위에서 만든거를 server action이라고 하는데
+
 ```  handleForm(formDatas: FormData){``` 여기 받을 데이터 타입을 적어주고
 
 use server 는 항상 functond의 최상단에 있어야한다
+
 ``` tsx
 export default function LogIn(){
     async function handleForm(formDatas: FormData){
@@ -39,7 +43,7 @@ export async function POST(request: NextRequest) {
 ```
 
 
-## useFormStatus 
+# useFormStatus 
 
 server action이 로딩 중일때는 버튼을 비활성화 하고싶다
 
