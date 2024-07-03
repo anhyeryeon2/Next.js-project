@@ -1,9 +1,6 @@
 "use server";
+import { PASSWORD_MIN_LENGTH, PASSWORD_REGEX } from '@/lib/constants';
 import {z} from 'zod';
-const passwordRegex = new RegExp(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*?[#?!@$%^&*-]).+$/
-  );
-  
 
 const formSchema = z
   .object({
@@ -12,8 +9,6 @@ const formSchema = z
         invalid_type_error: "Username must be a string!",
         required_error: "Where is my username???",
       })
-      .min(3, "Way too short!!!")
-      .max(10, "That is too looooong!")
       .toLowerCase()
       .trim()
       .transform((username) => `🔥 ${username}`)
@@ -22,7 +17,7 @@ const formSchema = z
         "No potatoes allowed!"
       ),
     email: z.string().email(),
-    password: z.string().min(4).regex(passwordRegex,"A password must have ~~ 정규식" ),
+    password: z.string().min(PASSWORD_MIN_LENGTH).regex(PASSWORD_REGEX,"A password must have ~~ 정규식" ),
     confirm_password: z.string().min(10),
   })
   .superRefine(({ password, confirm_password }, ctx) => {
@@ -40,7 +35,7 @@ export async function createAccount(prevState:any,formData:FormData) {
         username: formData.get("username"),
     email: formData.get("email"),
     password: formData.get("password"),
-    confirm_password: formData.get("confirmpassword"),
+    confirm_password: formData.get("confirm_password"),
     };
     
     const result = formSchema.safeParse(data);

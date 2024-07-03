@@ -324,7 +324,7 @@ export default function FormInput({type,placeholder,required,errors=[],name}:For
 
 - input이 받을 수 있는 모든 attributes 또한 받을 수 있다고 한것
 
-> 우리가 원하는 것은 FormInput 컴포넌트가 기본 props뿐만 아니라 <input> 요소가 받을 수 있는 모든 속성도 함께 받을 수 있도록 만드는 것입니다. 이렇게 하면 더 유연한 컴포넌트를 만들 수 있습니다. 이를 위해 TypeScript의 & 연산자를 사용하여 기본 props와 <input> 요소의 속성을 결합할 수 있습니다.
+> 우리가 원하는 것은 FormInput 컴포넌트가 기본 props뿐만 아니라 `<input> `요소가 받을 수 있는 모든 속성도 함께 받을 수 있도록 만드는 것입니다. 이렇게 하면 더 유연한 컴포넌트를 만들 수 있습니다. 이를 위해 TypeScript의 & 연산자를 사용하여 기본 props와 `<input>` 요소의 속성을 결합할 수 있습니다.
 
 ```jsx
 interface FormInputProps {
@@ -362,9 +362,9 @@ interface FormInputProps{
 
 나머지는 input의 attributes가 될거라고 적어주기만 하ㄷ면돼@@@
 
-- 인터페이스 확장: FormInputProps를 확장하여 InputHTMLAttributes<HTMLInputElement>와 결합했습니다.
-- props 전달: 나머지 props를 ...rest를 통해 <input> 요소에 전달했습니다.
-- 결과: FormInput은 이제 <input> 요소가 받을 수 있는 모든 속성을 받을 수 있습니다.
+- 인터페이스 확장: FormInputProps를 확장하여 InputHTMLAttributes`<HTMLInputElement>`와 결합했습니다.
+- props 전달: 나머지 props를 ...rest를 통해 `<input> `요소에 전달했습니다.
+- 결과: FormInput은 이제 `<input> `요소가 받을 수 있는 모든 속성을 받을 수 있습니다.
 
 => 더 유연하고 재사용 가능한 컴포넌트를 만들 수 있습니다.
 
