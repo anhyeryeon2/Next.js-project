@@ -113,4 +113,201 @@ prevState는 함수 smsVerification에 전달되는 첫 번째 인자로, 보통
 
 # 6.7
 
+``` tsx
+"use server";
+import {z} from "zod";
+import validator from "validator";
 
+const phoneSchema = z.string().trim().refine(validator.isMobilePhone);
+
+const tokenSchema = z.coerce.number().min(100000).max(999999);
+//formData로 받은 string을 줄테니 coerce강제로 number로 바꿔라
+
+export async function smsLogin(prevState : any ,formData:FormData){
+
+}
+
+```
+
+[Coerce]
+Zod는 coerce를 이용하여 값의 타입을 강제할 수 있습니다.
+모든 원시 타입이 지원되며, 아래와 같이 작동됩니다.
+
+z.coerce.string(); // String(input)
+z.coerce.number(); // Number(input)
+z.coerce.boolean(); // Boolean(input)
+
+# 6.8
+
+우리의 첫 (~~이제야 첫..?~~) interactive form을 만들어볼것이다.
+
+못 본 척 했던 prevState를 제대로 파보자
+
+그전에 refine method 복습
+
+아ㅏㅏㅏ흠
+
+
+```  tsx
+const phoneSchema = z.string().trim().refine(validator.isMobilePhone);
+```
+은 아래와 완전 똑같다.
+``` tsx
+const phoneSchema = z.string().trim().refine(phone => validator.isMobilePhone(phone));
+
+```
+한국 번호만 받고싶으면
+아래처럼
+
+``` tsx
+const phoneSchema = z.string().trim().refine((phone)=> validator.isMobilePhone(phone,"ko-KR"),"Wrong phone format"
+);
+```
+
+
+이제 prevState
+
+useFormState를 사용할떄 
+첫번째 argumant는 실행하고 싶은 action이고
+두번째는 useFormState hook의 initial state였다.
+
+d이 initial state는 , 이함수를 최초 호출할 때의 prevState의 값이 된다
+
+이 함수를 처음으로 호출할때, prevState는 여기에 initial state로 넣은 값과 같다 
+
+
+``` tsx
+"use client";
+
+import Button from "@/components/button";
+import Input from "@/components/input";
+import { useFormState } from "react-dom";
+import { smsLogin } from "./actions";
+
+const initialState ={
+  1️⃣ token:false,
+  error:undefined,
+};
+
+export default function SMSLogin() {
+  const [state,dispatch]=useFormState(smsLogin,initialState);
+  //1️⃣ 페이지가 ㅏ처음 render되면 state.token의 값으 false가 된다.
+  // 2️⃣=> 그 건 input을 숨기는데 사용할 수도@@
+  return (
+    <div className="flex flex-col gap-10 py-8 px-6">
+      <div className="flex flex-col gap-2 *:font-medium">
+        <h1 className="text-2xl">SMS Log in</h1>
+        <h2 className="text-xl">Verify your phone number.</h2>
+      </div>
+      <form action={dispatch} className="flex flex-col gap-3">
+        <Input
+          name="phone"
+          type="text"
+          placeholder="Phone number"
+          required
+          errors={state.error?.formErrors}
+        />
+        2️⃣{state.token?( <Input
+        name="token"
+          type="number"
+          placeholder="Verification code"
+          required
+          min={100000}
+          max={999999}
+        />):null}
+        <Button text="Verify" />
+      </form>
+    </div>
+  );
+}
+```
+
+
+
+그러고 인터페이스를 만들어준다. 
+
+``` tsx
+...
+
+
+// 1️⃣ 인터페이스 만들고 
+interface ActionState {
+    token:boolean
+}
+
+export async function smsLogin(prevState : ActionState ,formData:FormData){
+  //2️⃣ 데이터 가져오기 
+    const phone = formData.get("phone");
+    const token = formData.get("token");
+    if(!prevState.token){
+      // 🟡3️⃣prevState.token이 false이면 이 action을 처음 호출했다는거
+      // false 라면 d유저가 전번만 입력했다는거 
+        const result = phoneSchema.safeParse(phone); // 전번 검증
+        if(!result.success){
+            console.log(result.error.flatten());
+            return{
+                token:false,
+            };
+            // 잘못된 전번 입력하면 token false되서 다음단계로 못넘어감
+
+        }else{
+            return{
+                token:true,
+            };
+        }
+      }else{
+        🟡//token을 받고 있을때
+        const result = tokenSchema.safeParse(token);  //토큰 검증 
+        if(!result.success){
+            return{
+                token:true,
+                error:result.error.flatten()
+            };
+        }else{
+            redirect("/");
+            
+        }
+
+    }
+}
+
+
+```
+위의 검증에서 
+//token false 를 return한다는것은 이 값이 
+``` tsx
+ const [✨state,dispatch]=useFormState(smsLogin,initialState);
+```
+여기의 state가 된다는 것이고, 
+그렇게되면 token input이 보이지 않게됨
+
+
+``` tsx
+f(!prevState.token){
+        const result = phoneSchema.safeParse(phone);
+        if(!result.success){
+          //굳이 이렇게 !result.success로 반대로 적은이유가 
+          // initialState의 값이 token이 false로 처음에 없어야하기 때문에
+          // if 로 들어오면 true가 되고 전번-> 토큰 검증이 가능하게 됨
+
+            console.log(result.error.flatten());
+            return{
+                token:false,
+            };
+        }else{
+            return{
+                token:true,
+            };
+        }
+    }else
+```
+
+
+근데 smsLogin함수를 두번째로 호출하면
+prevState 이전상태는 token true가 된다.
+
+SMSlogin을 다시 호출하면 전에 리턴했던 값이 prevState가 된다
+=> 함수가 이전에 return했던 값이  그 다음번 함수를 다시 호출했을 때의 prevState로 들어감
+
+
+10:30 ~~ 
