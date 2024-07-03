@@ -1,12 +1,12 @@
 "use client";
 import { useFormStatus } from "react-dom";
 
-interface FormButtonProps {
+interface ButtonProps {
     text: string;
   }
   
   //hook으로 form의 로딩상태 알기 -> loading 삭제
-  export default function FormButton({ text }: FormButtonProps) {
+  export default function Button({ text }: ButtonProps) {
     const{pending} = useFormStatus();
     //pending상태라면 버튼 비활성화 
     return (

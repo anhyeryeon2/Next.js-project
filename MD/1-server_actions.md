@@ -6,7 +6,7 @@ route 핸들러를 생성하고 post를 fetch하는 대신에
 
 #### *서버액션은 비동기함수여야한다.
 > 비동기 :  특정 코드가 끝날때 까지 코드의 실행을 멈추지 않고 다음 코드를 먼저 실행
-
+![alt text](image.png)
 
 ``` jsx
 export default function LogIn(){
@@ -51,7 +51,6 @@ UI에게 작업이 실행되는것을 알려줘서 -> server action이 여러번
 
 사용자가 버튼 계속 클릭하면 =-> race condition에 빠지게됨
 
-//TODO: 
 ``` jsx
 export default function LogIn(){
     async function handleForm(formData:FormData){
@@ -66,23 +65,17 @@ export default function LogIn(){
 
 좋지않다.
 
-``` jsx
-export default function LogIn(){
-    async function handleForm(formData:FormData){
-        "use server";
-        await new Promise(resolve => setTimeout(resolve,5000))
-        console.log("logged in!");
-    }
-}
-```
 
 ``` const {pending} = useFormStatus();```
+
 pending 상태인지 알려줌 , function이 끝난 여부를 알려준다.
-> useFormStatus는 마지막 form submit의 상태 정보를 제공하는 Hook
+
+> ✨ useFormStatus는 마지막 form submit의 상태 정보를 제공하는 Hook
 
 
 #### 하지만 이 hook은 action을 실행하는 form과 같은곳에서 사용할 수 없다. 
 이 훅은 form의 자식에서만 사용할 수 있다. 
+
 -> form 상태에 따라 변경하고자 하는 component내부에서 사용해야함@!!!
 
 
@@ -113,10 +106,11 @@ interface FormButtonProps {
 ```
 
 useFormStatus hook을 사용하기 위해서는
-    client component로 바꿔야함
+
+###  client component로 바꿔야함
 
 
-버튼이   interactive 하기 때문에 client component
+-> 버튼이   interactive 하기 때문에 client component
 
 그래서 코드 맨위에 ``` "use client"; ``` 추가해준다
 
@@ -244,3 +238,7 @@ action을 실행하면 handleForm이 실행되고
 - useFormState는 form action의 결과에 따라 상태를 업데이트할 수 있는 Hook
 ```
 
+```
+status : 결과로서의 상태
+state : 현재의 상태
+```
