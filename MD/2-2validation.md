@@ -103,12 +103,13 @@ export async function smsVerification(prevState : any ,formData:FormData){
 
 ```
 #### 여기서 prevState : any는 뭐지
-prevState: any는 TypeScript에서 함수의 매개변수 prevState의 타입을 any로 지정하는 구문입니다. 여기서 any는 TypeScript의 타입 중 하나로, 어떤 타입이든 허용된다는 것을 의미합니다. 따라서 prevState는 어떤 타입의 값이든 받을 수 있습니다.
+prevState:any
+- any는 TypeScript에서 함수의 매개변수 prevState의 타입을 any 지정
+-  여기서 any는 TypeScript의 타입 중 하나로, 어떤 타입이든 허용 따라서 
+   - prevState는 어떤 타입의 값이든 받을 수 있
 
 
-prevState는 함수 smsVerification에 전달되는 첫 번째 인자로, 보통 이전 상태를 나타냅니다. 예를 들어, 이 함수가 폼의 상태를 관리하거나 업데이트하는 데 사용된다면, prevState는 함수 호출 시점의 상태를 의미할 수 있습니다.
-
-폼 상태를 관리할 때 이전 상태를 전달받기 위해 사용됩
+(다음에 다시 제대로 다룸 )
 
 
 # 6.7
@@ -132,11 +133,11 @@ export async function smsLogin(prevState : any ,formData:FormData){
 [Coerce]
 Zod는 coerce를 이용하여 값의 타입을 강제할 수 있습니다.
 모든 원시 타입이 지원되며, 아래와 같이 작동됩니다.
-
+```
 z.coerce.string(); // String(input)
 z.coerce.number(); // Number(input)
 z.coerce.boolean(); // Boolean(input)
-
+```
 # 6.8
 
 우리의 첫 (~~이제야 첫..?~~) interactive form을 만들어볼것이다.
@@ -168,12 +169,12 @@ const phoneSchema = z.string().trim().refine((phone)=> validator.isMobilePhone(p
 이제 prevState
 
 useFormState를 사용할떄 
-첫번째 argumant는 실행하고 싶은 action이고
-두번째는 useFormState hook의 initial state였다.
+- 첫번째 argumant는 실행하고 싶은 action이고
+- 두번째는 useFormState hook의 initial state였다.
 
-d이 initial state는 , 이함수를 최초 호출할 때의 prevState의 값이 된다
+이 initial state는 , 이함수를 최초 호출할 때의 prevState의 값이 된다
 
-이 함수를 처음으로 호출할때, prevState는 여기에 initial state로 넣은 값과 같다 
+> 함수를 처음으로 호출할때, prevState는 여기에 initial state로 넣은 값과 같다 
 
 
 ``` tsx
@@ -304,10 +305,125 @@ f(!prevState.token){
 
 
 근데 smsLogin함수를 두번째로 호출하면
-prevState 이전상태는 token true가 된다.
+- prevState 이전상태는 token true가 된다.
 
-SMSlogin을 다시 호출하면 전에 리턴했던 값이 prevState가 된다
+> SMSlogin을 다시 호출하면 전에 리턴했던 값이 prevState가 된다
+
 => 함수가 이전에 return했던 값이  그 다음번 함수를 다시 호출했을 때의 prevState로 들어감
 
 
-10:30 ~~ 
+
+그리고
+
+refine 은 또다른 argument를 가질 수있다. message
+``` tsx
+const phoneSchema = z.string().trim().refine((phone)=> validator.isMobilePhone(phone,"ko-KR"),✨"Wrong phone format"
+);
+```
+
+# 6.9 
+recap
+((다음섹션 부터는 속도는 내서 prisma랑 planet scale을 다룰예정))
+
+지금은 복습
+
+
+``` tsx
+"use client";
+
+import Button from "@/components/button";
+import Input from "@/components/input";
+import { useFormState } from "react-dom";
+import { smsLogin } from "./actions";
+
+const initialState ={
+  token:false,
+  error:undefined,
+};
+// 1️⃣우선 initialState를 설정하고
+
+
+export default function SMSLogin() {
+  const [state,dispatch]=useFormState(smsLogin,initialState);
+  // 2️⃣2번재 요소는 smsLogin 함수의 prevState로 전달이됨 => 함수 처음 호출했을때 
+
+  return (
+    <div className="flex flex-col gap-10 py-8 px-6">
+      <div className="flex flex-col gap-2 *:font-medium">
+        <h1 className="text-2xl">SMS Log in</h1>
+        <h2 className="text-xl">Verify your phone number.</h2>
+      </div>
+      <form action={dispatch} className="flex flex-col gap-3">
+        <Input
+          name="phone"
+          type="text"
+          placeholder="Phone number"
+          required
+          errors={state.error?.formErrors}
+        />
+        {state.token?( <Input
+        name="token"
+          type="number"
+          placeholder="Verification code"
+          required
+          min={100000}
+          max={999999}
+        />):null}
+        <Button text="Verify" />
+      </form>
+    </div>
+  );
+}
+```
+
+action.ts
+``` tsx
+"use server";
+import {z} from "zod";
+import validator from "validator";
+import { redirect } from "next/navigation";
+
+const phoneSchema = z.string().trim().refine((phone)=> validator.isMobilePhone(phone,"ko-KR"),"Wrong phone format"
+);
+
+const tokenSchema = z.coerce.number().min(100000).max(999999);
+
+interface ActionState {
+    token:boolean
+}
+export async function smsLogin(prevState : ActionState ,formData:FormData){
+    const phone = formData.get("phone");
+    const token = formData.get("token");
+    // 3️⃣formData에서 데이터 가져오기 
+    if(!prevState.token){
+        const result = phoneSchema.safeParse(phone);
+        if(!result.success){
+            console.log(result.error.flatten());
+            return{
+                token:false,
+            };
+        }else{
+            return{
+                token:true,
+            };
+            // 4️⃣ 검증에 따라 return 되는 값이 page.tsx의 state가 된다. 
+        }
+    }else{
+        //token을 받고 있을때
+        const result = tokenSchema.safeParse(token);
+        if(!result.success){
+            return{
+                token:true,
+                error:result.error.flatten()
+            };
+        }else{
+            redirect("/");
+            
+        }
+
+    }
+}
+
+
+```
+

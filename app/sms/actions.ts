@@ -22,6 +22,7 @@ export async function smsLogin(prevState : ActionState ,formData:FormData){
             console.log(result.error.flatten());
             return{
                 token:false,
+                error:result.error.flatten(),
             };
         }else{
             return{
