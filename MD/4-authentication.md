@@ -201,3 +201,233 @@ session은 우리가 쿠키에 넣고싶은 정보 저장
 저장까지하고 나면 
 
 iron session이 데이터를 암호화한다.
+
+
+쿠키내용을 lib 폴더안에 넣자
+
+타입스크립트에게 우리의 cookie를 설명하기위해
+``` ts
+interface SessionContent {
+  id?: number;
+}
+
+```
+?가 있는 이유는 세션에 id가 없을 수도 있기 때문
+- 쿠키에 id가 없을 수도
+
+로그인한 사용자만 쿠키에 id를 가지고있어서
+
+
+### 이메일과 비밀번호로 로그인하는 기능
+
+해싱된 비밀번호와,
+
+사용자가 보낸 비밀번호 비교
+'
+login/ action.ts
+
+``` ts
+"use server";
+
+import { PASSWORD_MIN_LENGTH, PASSWORD_REGEX, PASSWORD_REGEX_ERROR } from "@/lib/constants";
+import {z} from "zod";
+
+const formSchema = z.object({
+  email: z.string().email().toLowerCase(),
+  password: z
+    .string({
+      required_error: "Password is required",
+      //password가 없는경우 메세지 
+    })
+    // .min(PASSWORD_MIN_LENGTH)
+    // .regex(PASSWORD_REGEX, PASSWORD_REGEX_ERROR),
+});
+
+export async function logIn(prevState: any, formData: FormData) {
+  const data ={
+    email:formData.get("email"),
+    password:formData.get("password"),
+  };
+  const result = formSchema.safeParse(data);
+  if (!result.success) {
+    // console.log(result.error.flatten());
+    return result.error.flatten();
+  } else {
+    // 이메일로 유저찾기
+    // 비밀번호 맞는지 확인
+    // 사용자 찾아졌을때, 비밀번호 해시값 확인
+    // 로그인 
+    // profile로 보내기
+    
+
+
+  }
+}
+```
+ // 이메일로 유저찾기
+ 에서 checkEmailExists 함수를 만들어
+ ``` ts
+ 
+const checkEmailExists = async (email: string) => {
+  const user = await db.user.findUnique({
+    where: {
+      email,
+    },
+    select: {
+      id: true,
+    },
+  });
+  // if(user){
+  //   return true
+  // } else {
+  //   return false
+  // }
+  return Boolean(user);
+};
+```
+이함수가 
+이메일을 가진 use가 db에 존재한다면,
+- true를 리턴해서 에러를 보여주지 않는다. 
+
+그다음 safeParse를 safeParseAsync로 바꿔야한다.
+
+``` ts
+  const result = formSchema.safeParse(data);
+
+
+const result = await formSchema.spa(data);
+```
+
+// 사용자 찾아졌을때, 비밀번호 해시값 확인
+이것도 마찬가지로..
+
+``` ts
+} else {
+    // 사용자 찾아졌을때, 비밀번호 해시값 확인
+    const user = await db.user.findUnique({
+      where: {
+        email: result.data.email,
+      },
+      select: {
+        id: true,
+        password: true,
+      },
+    });
+    const ok = await bcrypt.compare(
+      result.data.password,
+      user!.password ?? ""
+    );
+
+    // compare은 사용자가 작성한 비번을 받는다. 
+    // 그리고 그걸 db의 해시값과 비교
+    //user! 느낌표로 prisma에게 user가 확실히 존재한다고
+    //문제는 password가 null일수 있다는것 
+    // ??""로 user가 pw를 가지지 않는다면, 빈문자와 비교
+
+    if(ok){
+      // 로그인 시킨다. 세션 필요
+      const session = await getSession();
+      session.id = user!.id;
+      redirect("/profile");
+
+    }else {
+      // 비밀번호가 맞지 않을때는 
+      return {
+        fieldErrors: {
+          password: ["Wrong password."],
+          email: [],
+        },
+      };
+    }
+  }
+}
+```
+
+compare의 첫번째인자는 : 작성한 값
+두번째 인자는 해시 값
+
+
+### superRefine
+
+refine과 동일한데 더빨리 돌아올 수 있다.
+- 다른 모든 검사들을 중단시켜서
+
+db를 한번만 호출해보자
+
+``` ts
+const formSchema = z
+  .object({
+    username: z
+      .string({
+        invalid_type_error: "Username must be a string!",
+        required_error: "Where is my username???",
+      })
+      .toLowerCase()
+      .trim()
+       // .transform((username) => `🔥 ${username} 🔥`)
+       .refine(checkUsername, "No potatoes allowed!")
+       .refine(checkUniqueUsername, "This username is already taken"),
+```
+
+
+checkUniqueUsername, checkUniqueEmail를 삭제하고
+
+object 를 refine 하면됨 
+``` ts
+.superRefine(async ({ username }, ctx) => {
+  ```
+  첫번째 인자는 현재 refine하고있는 data
+  두번째는 에러묶음
+- 에러를 ctx에 추가가능 (context)
+
+
+``` ts
+.superRefine(async ({ username }, ctx) => {
+    const user = await db.user.findUnique({
+      where: {
+        username,
+      },
+      select: {
+        id: true,
+      },
+    });
+    if (user) {
+      //에러를 보여주기 위한 자리 
+      ctx.addIssue({
+        //addissue로 유효성 검사에서 에러추가하느 방법
+        code: "custom",
+        message: "This username is already taken", //이미사용중
+        path: ["username"], //에러 발생시킨 필드 어딘지 
+        fatal: true, // 치명적이라고 설정 
+      });
+      return z.NEVER;
+      // fatal이랑 z.NEVER 추가하면 위에서 실패하면 미리 중단해줌 
+      // 그 뒤에 다른 refine있어도 실행되지 않음
+
+    }
+  })
+
+
+  .superRefine(async ({ email }, ctx) => {
+    const user = await db.user.findUnique({
+      // 주어진 이메일로 db에서 사용자 찾는다. 
+      where: {
+        email,
+      },
+      select: {
+        id: true,
+      },
+    });
+    if (user) {
+      // 사용자가 존재하면/ 이미사용중이라면 
+      ctx.addIssue({
+        code: "custom",
+        message: "This email is already taken",
+        path: ["email"],
+        fatal: true,
+      });
+      return z.NEVER;
+      // 오류가 발생하면 z.NEVER반환하여 검증 중단. 
+    }
+  })
+  ```

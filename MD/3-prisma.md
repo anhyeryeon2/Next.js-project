@@ -17,7 +17,7 @@ schema.prisma파일에는
 
 ###  prsima에게 우리 DB에 있는 사용자가 어떤 형태인지 설명해보자 
 
-``` prisma
+``` ts
 model User {
     //고유 식별자 
   id         Int        @id @default(autoincrement())
