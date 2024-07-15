@@ -431,3 +431,148 @@ object 를 refine 하면됨
     }
   })
   ```
+
+
+
+
+
+
+
+  ## middleware
+
+  private page를 보호해주는지 보자
+
+  middleware는 중간에서 동작하는 일종의 software를 뜻한다.
+
+  next에서는 request하는 소스, user와 ㅡㅡ 그 대상의 request 사이에서 작동됨
+
+Get/ profile ------------- middleware() ------------>`<profile/>`
+
+  - 장점은 임의의 코드를 실행할 수 있지만, 이후 어떤일이 일어날지 수정할 수도 있다. 
+
+  middleware파일을 app폴더와 같은 level에 만들고
+
+``` tsx
+  export function middleware(){
+    console.log("hi im middleware");
+}
+```
+이렇게 적고 home에 갔을때 콘솔에 문구가 7번이나 출력되었다.
+
+왜냐
+
+페이지변경할때마다 middleware가 실행될 뿐만아니라 
+웹 사이트의 모든 request 하나마다 middleware가 실행되기 때문이다.
+
+-> home에 새로고침하면, css, js, favicon 전부를 실행해서 여러개다
+
+모든 단일 request에 대해 실행된다
+ 
+``` tsx
+import { NextRequest, NextResponse } from "next/server";
+import getSession from "./lib/session";
+
+export async function middleware(request: NextRequest) {
+  const session = await getSession();
+  console.log(session);
+  if (request.nextUrl.pathname === "/profile") {
+    return NextResponse.redirect(new URL("/", request.url));
+    // if라면 이 프로필 페이지를 보호할거다
+    // Response는 
+
+  }
+}
+
+```
+
+미들웨어가 request를 가로채서 profile페이지로 가려는 request를 완전히 중단시킨다. 
+
+
+
+
+### 미들웨어가 특정 페이지에서만 실행되도록 해보자
+
+
+``` ts
+import { NextRequest, NextResponse } from "next/server";
+import getSession from "./lib/session";
+
+export async function middleware(request: NextRequest) {
+  const session = await getSession();
+  console.log(session);
+  if (request.nextUrl.pathname === "/profile") {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+}
+
+//미들웨어에게 실행할 위치와 실행하지 않을 위치를 알려주려면 ,
+//  config 객체를 생성 해준다. 
+
+export const config = {
+  matcher:["/","/profile","/user/:path*"],
+  //미들웨어가 실행되어야하는 페이지를 지정가능
+
+}
+
+//근데 여기서 함수이름을 미들웨어로 같게하는것이 중요
+```
+아니면 정규방정식을 넣을 수도 있다.
+
+``` ts
+import { NextRequest } from "next/server";
+
+export async function middleware(request: NextRequest) {
+  console.log("hello");
+}
+
+export const config = {
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+};
+```
+
+matcher를 사용하면 미들웨어를 필터링하여 특정 경로들에서만 실행되도록 할 수 있다.
+
+``` ts
+import { NextRequest, NextResponse } from "next/server";
+import getSession from "./lib/session";
+
+//키가 문자열이고 값이 boolean인 객체를 정의
+interface Routes {
+  [key: string]: boolean;
+}
+
+const publicOnlyUrls: Routes = {
+  "/": true,
+  "/login": true,
+  "/sms": true,
+  "/create-account": true,
+};
+//publicOnlyUrls는 로그인하지 않은 사용자만 접근할 수 있는 경로를 나타냄
+
+// object로 저장하는게 객체내에서 뭔가 포함하고 있는지 검색하는게 ,
+// array내에서 뭔가 포함하고 있나 검색하는것보다 더 빠르다
+
+
+export async function middleware(request: NextRequest) {
+  const session = await getSession();
+  const exists = publicOnlyUrls[request.nextUrl.pathname];
+  //유저가 가려는 pathname을 확인하고, 그 page가 object에 존재하는지 
+  if (!session.id) {
+    if (!exists) {  // 로그인 상태가 아니라면
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  } else {
+    if (exists) {  //로그인 되어있다면
+      return NextResponse.redirect(new URL("/products", request.url));
+      //요청된 경로가 publicOnlyUrls에 있다면, 즉 로그인하지 않아야 하는 페이지라면 "/products"로 리다이렉트
+
+    }
+  }
+}
+
+export const config = {
+    matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+    //api, _next/static, _next/image, favicon.ico를 제외한 모든 요청에 미들웨어가 적용
+  };
+
+  ```
