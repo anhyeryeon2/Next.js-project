@@ -18,7 +18,7 @@ model User {
   created_at DateTime   @default(now())
   updated_at DateTime   @updatedAt
   SMSToken   SMSToken[]
-  Product    Product2[]
+  Product    Product[]
 }
 
 model SMSToken {
@@ -30,7 +30,7 @@ model SMSToken {
   userId     Int
 }
 
-model Product2 {
+model Product {
   id          Int    @id @default(autoincrement())
   title       String
   price       Float
